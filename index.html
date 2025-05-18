@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Styles by Luuk Kablan: "Light attracts bugs" -->
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      color: #eeeeee;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 2rem;
+      background-color: #232a32;
+      margin: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+    .container {
+      width: 50vw;
+      min-height: 50vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+    }
+    form {
+      width: 100%;
+    }
+    input, button {
+      outline: none;
+      background: #00000045;
+      margin: 1px 20%;
+      width: 60%;
+      padding: 1rem 2rem;
+      border-radius: 0.5rem;
+      border: 1px solid #0000005f;
+    }
+    button {
+      cursor: pointer;
+      background: #00000065;
+    }
+    input:focus {
+      border-color: #f000f05f;
+    }
+    input:hover {
+      background: #00000025;
+    }
+    ul {
+      padding: 1rem;
+      list-style: none;
+      margin: 0;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+    }
+    li {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.25rem;
+    }
+  </style>
+  <meta charset="UTF-8">
+  <title>Varint Converter | Convert Variable-Length Integers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Free online tool to convert between varint (variable-length integer) and decimal numbers. Supports hexadecimal input and easy copying of results.">
+  
+  <!-- SEO Meta Tags -->
+  <meta name="keywords" content="varint converter, variable-length integer, hex to decimal, programming tools, developer utilities">
+  <meta name="author" content="Zegevlier, Luuk Kablan">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Open Graph Meta Tags for Social Sharing -->
+  <meta property="og:title" content="Varint Converter | Convert Variable-Length Integers">
+  <meta property="og:description" content="Free online tool to convert between varint (variable-length integer) and decimal numbers. Supports hexadecimal input and easy copying of results.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Varint Converter">
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Varint Converter">
+  <meta name="twitter:description" content="Free online tool to convert between varint (variable-length integer) and decimal numbers">
+  
+  <!-- Theme Color for Browser -->
+  <meta name="theme-color" content="#232a32">
+  
+  <!-- Additional Meta Tags -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="canonical" href="https://varint.kablan.nl">
+
+</head>
+<body>
+<h1>Varint converter</h1>
+<div class="container">
+  <div>
+    <label for="read"></label><input type="text" placeholder="0xdd 0xc7 0x01" name="data" id="read">
+    <button onclick="readOut()">Read</button>
+  </div>
+  <div>
+    <label for="read-out"></label><input id="read-out" disabled>
+    <button onclick="copyRead()">Copy</button>
+  </div>
+  <div>
+    <label for="write"></label><input type="text" placeholder="25565" name="data" id="write">
+    <button onclick="writeOut()">Write</button>
+  </div>
+  <div>
+    <label for="write-out"></label><input id="write-out" disabled>
+    <button onclick="copyWrite()">Copy</button>
+  </div>
+</div>
+<ul class="credits">
+  <li>Converter by <a href="https://github.com/zegevlier" target="_blank">Zegevlier</a></li>
+  <li>UX by <a href="https://github.com/LuckyLuuk12" target="_blank">Luuk Kablan</a></li>
+  <li>Source code on <a href="https://github.com/LuckyLuuk12/Varint" target="_blank">Github</a></li>
+</ul>
+</body>
+
+<script>
+  function readOut() {
+    const readOut = document.getElementById("read-out");
+    const input = document.getElementById("read").value;
+    
+    try {
+      const numbers = input
+              .split(",")
+              .flatMap((x) => x.split(" "))
+              .flatMap((x) => x.split("+"))
+              .map((x) => parseInt(x, 16)); // Parse as hexadecimal
+      readOut.value = readVarInt(numbers);
+    } catch (error) {
+      readOut.value = "Error: " + error.message;
+    }
+  }
+  
+  function writeOut() {
+    const writeOut = document.getElementById("write-out");
+    const input = document.getElementById("write").value;
+    
+    try {
+      const parsedInput = parseInt(input, 10);
+      if (isNaN(parsedInput)) {
+        writeOut.value = "Error: " + input + " is not a valid number.";
+        return;
+      }
+      const result = writeVarInt(parsedInput);
+      writeOut.value = result.map((n) => "0x" + n.toString(16)).join(" ");
+    } catch (error) {
+      writeOut.value = "Error: " + error.message;
+    }
+  }
+  
+  function copyRead() {
+    const readOut = document.getElementById("read-out");
+    navigator.clipboard.writeText(readOut.value);
+  }
+  
+  function copyWrite() {
+    const writeOut = document.getElementById("write-out");
+    navigator.clipboard.writeText(writeOut.value);
+  }
+  
+  // Converter:
+  const SEGMENT_BITS = 0x7f;
+  const CONTINUE_BIT = 0x80;
+  
+  function writeVarInt(input) {
+    const buffer = [];
+    let value = input;
+    while (true) {
+      if ((value & ~SEGMENT_BITS) === 0) {
+        buffer.push(value);
+        break;
+      }
+      buffer.push((value & SEGMENT_BITS) | CONTINUE_BIT);
+      value >>>= 7;
+    }
+    return buffer;
+  }
+  
+  function readVarInt(buffer) {
+    let value = 0;
+    let position = 0;
+    let currentByte;
+    
+    while (true) {
+      currentByte = buffer.shift();
+      if (currentByte === undefined) {
+        throw new Error("Failed to read byte");
+      }
+      value |= (currentByte & SEGMENT_BITS) << position;
+      
+      if ((currentByte & CONTINUE_BIT) === 0) {
+        break;
+      }
+      
+      position += 7;
+      
+      if (position >= 32) {
+        throw new Error("VarInt too big :(");
+      }
+    }
+    
+    return value;
+  }
+</script>
+</html>
